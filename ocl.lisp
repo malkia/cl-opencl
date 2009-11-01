@@ -9,30 +9,26 @@
 (in-package "OCL")
 
 (defconstant +c-types+
-  '((INT32    (signed-integer   32))
-    (UINT32   (unsigned-integer 32))
-    (INT64    (signed-integer   64))
-    (UINT64   (unsigned-integer 64))
-    (STRING    :pointer)
-    (INT       INT32)
-    (UINT      UINT)
-    (LONG      INT64)
-    (ULONG     UINT64)
-    (MASK      ULONG)
-    (BOOL      UINT)
+  '((STR      :pointer)
+    (INT      (:signed-integer-type 32))
+    (UINT     (:unsigned-integer-type 32))
+    (MASK     (:unsigned-integer-type 64))
+    (BOOL     UINT)
     (PTR      :pointer)
     (PARAM    :signed)
     (SIZE-T   :unsigned)
-    (FUNCTION :pointer)
-    (PLATFORM  )
-    (DEVICE    )
-    (CONTEXT   )
-    (QUEUE     )
-    (BUFFER    )
-    (PROGRAM   )
-    (KERNEL    )
-    (EVENT     )
-    (SAMPLER   )))
+    (CALLBACK :pointer)
+    (PLATFORM :pointer)
+    (DEVICE   :pointer)
+    (CONTEXT  :pointer)
+    (QUEUE    :pointer)
+    (BUFFER   :pointer)
+    (PROGRAM  :pointer)
+    (KERNEL   :pointer)
+    (EVENT    :pointer)
+    (IMAGE-FORMAT :pointer)
+    (VOID     :pointer)
+    (SAMPLER  :pointer)))
 
 (defconstant +c-structures+
   '((IMAGE-FORMAT)))
@@ -42,8 +38,8 @@
     (|clGetPlatformInfo|             INT     ((PLATFORM platform) (PARAM platform-info) (SIZE-T param-value-size) (PTR param-value) ((SIZE-T) param-value-size-returned)))
     (|clGetDeviceIDs|                INT     ((PLATFORM platform) (MASK device-type) (UINT num-entries) ((DEVICE) devices) ((UINT) num-devices)))
     (|clGetDeviceInfo|               INT     ((DEVICE device) (PARAM device-info) (SIZE-T param-value-size) (PTR param-value) ((SIZE-T) param-value-size-returned)))
-    (|clCreateContext|               CONTEXT ((PTR context-properties) (UINT num-devices) ((DEVICE) devices) (FUNCTION notify) (PTR user-data) ((INT) error-returned)))
-    (|clCreateContextFromType|       CONTEXT ((PTR context-properties) (MASK device-type) (FUNCTION notify) (PTR user-data0 ((INT) error-returned))))
+    (|clCreateContext|               CONTEXT ((PTR context-properties) (UINT num-devices) ((DEVICE) devices) (CALLBACK notify) (PTR user-data) ((INT) error-returned)))
+    (|clCreateContextFromType|       CONTEXT ((PTR context-properties) (MASK device-type) (CALLBACK notify) (PTR user-data0 ((INT) error-returned))))
     (|clRetainContext|               INT     ((CONTEXT context)))
     (|clReleaseContext|              INT     ((CONTEXT context)))
     (|clGetContextInfo|              INT     ((CONTEXT context) (PARAM context-info) (SIZE-T param-value-size) (PTR param-value) ((SIZE-T) param-value-size-returned)))
@@ -68,10 +64,10 @@
     (|clCreateProgramWithBinary|     PROGRAM ((CONTEXT context) (UINT device-count) ((DEVICE) devices) ((SIZE-T) binary-lengths) (PTR binaries) ((INT) binary-status) ((INT) error-returned)))
     (|clRetainProgram|               INT     ((PROGRAM program)))
     (|clReleaseProgram|              INT     ((PROGRAM program)))
-    (|clBuildProgram|                INT     ((PROGRAM program) (UINT device-count) ((DEVICE) devices) (STRING options) (FUNCTION notify) (PTR user-data)))
+    (|clBuildProgram|                INT     ((PROGRAM program) (UINT device-count) ((DEVICE) devices) (STR options) (CALLBACK notify) (PTR user-data)))
     (|clUnloadCompiler|              VOID    )
     (|clGetProgramInfo|              INT     ((PROGRAM program) (PARAM program-info) (SIZE-T param-value-size) (PTR param-value) ((SIZE-T) param-value-returned)))
-    (|clCreateKernel|                KERNEL  ((PROGRAM program) (STRING kernel-name) ((INT) error-returned)))
+    (|clCreateKernel|                KERNEL  ((PROGRAM program) (STR kernel-name) ((INT) error-returned)))
     (|clCreateKernelsInProgram|      KERNEL  ((PROGRAM program) (UINT kernel-count) ((KERNEL) kernels) ((UINT) kernel-count-returned)))
     (|clRetainKernel|                INT     ((KERNEL kernel)))
     (|clReleaseKernel|               INT     ((KERNEL kernel)))
@@ -102,7 +98,7 @@
     (|clEnqueueMarker|               INT     ((QUEUE queue) ((EVENT) event-returned)))
     (|clEnqueueWaitForEvents|        INT     ((QUEUE queue) (UINT event-count) ((EVENT) events)))
     (|clEnqueueBarrier|              INT     ((QUEUE queue)))
-    (|clGetExtensionFunctionAddress| PTR     ((STRING function-name)))
+    (|clGetExtensionFunctionAddress| PTR     ((STR function-name)))
     (|clCreateFromGLBuffer|          BUFFER  ((CONTEXT context) (MASK memory-flags) (SIZE-T buffer-object) ((INT) error-returned)))
     (|clCreateFromGLTexture2D|       BUFFER  ((CONTEXT context) (MASK memory-flags) (SIZE-T texture-target) (SIZE-T mip-level) (SIZE-T texture-object) ((INT) error-returned)))
     (|clCreateFromGLTexture3D|       BUFFER  ((CONTEXT context) (MASK memory-flags) (SIZE-T texture-target) (SIZE-T mip-level) (SIZE-T texture-object) ((INT) error-returned)))
@@ -114,24 +110,57 @@
     #+macosx
     (|clGetGLContextInfoAPPLE|       INT     ((CONTEXT context) (PTR platform-gl-context) (UINT gl-platform-info) (SIZE-T param-value-size) (PTR param-value) ((SIZE-T) param-value-size-returned)))
     #+macosx
-    (|clSetMemObjectDestructoAPPLE|  INT     ((BUFFER buffer) (FUNCTION notify) (PTR user-data)))
+    (|clSetMemObjectDestructoAPPLE|  INT     ((BUFFER buffer) (CALLBACK notify) (PTR user-data)))
     #+macosx
-    (|clLogMessagesToSystemLogAPPLE| VOID    ((STRING error-string) (PTR private-info) (SIZE-T cb) (PTR user-data)))
+    (|clLogMessagesToSystemLogAPPLE| VOID    ((STR error-string) (PTR private-info) (SIZE-T cb) (PTR user-data)))
     #+macosx
-    (|clLogMessagesToStdoutAPPLE|    VOID    ((STRING error-string) (PTR private-info) (SIZE-T cb) (PTR user-data)))
+    (|clLogMessagesToStdoutAPPLE|    VOID    ((STR error-string) (PTR private-info) (SIZE-T cb) (PTR user-data)))
     #+macosx
-    (|clLogMessagesToStderrAPPLE|    VOID    ((STRING error-string) (PTR private-info) (SIZE-T cb) (PTR user-data)))))
+    (|clLogMessagesToStderrAPPLE|    VOID    ((STR error-string) (PTR private-info) (SIZE-T cb) (PTR user-data)))))
 
-#+macosx
-(fli:register-module "/System/Library/Frameworks/OpenCL.framework/OpenCL") 
+;;; EVAL UGLYNESS
+#+lispworks
+(locally
+  (fli:register-module "OpenCL"
+                       :real-name #+macosx "/System/Library/Frameworks/OpenCL.framework/OpenCL"
+                       #+win32 "C:/Windows/System32/OpenCL.dll"
+                       #+linux "/usr/lib/libOpenCL.so"
+                       :connection-style :immediate)
+  (eval `(locally ,@(loop for l in +c-types+ collect `(fli:define-c-typedef ,(first l) ,(second l)))))
+  (dolist (l +c-functions+)
+    (eval `(fli:define-foreign-function (,(first l) ,(format nil "~A" (first l)))
+               ,(loop for p in (third l)
+                      collect `(,(second p)
+                                ,(if (atom (first p))
+                                     (first p)
+                                   `(:pointer ,(first (first p))))))
+             :result-type ,(second l)
+             :module "OpenCL"
+             :calling-convention #+win32 :stdcall #-win32 :cdecl))))
 
-#+win32
-(fli:register-module "C:/Windows/System32/OpenCL.dll")
+#+lispworks
+(defun platform-count ()
+  (fli:with-dynamic-foreign-objects ((count u32))
+    (let ((error (|clGetPlatformIDs| 0 nil count)))
+      (values (fli:dereference count) error))))
 
-(fli:define-c-typedef s32 (:signed :int))
-(fli:define-c-typedef u32 (:unsigned :int))
-(fli:define-c-typedef s64 (:signed :long-long))
-(fli:define-c-typedef u64 (:unsigned :long-long))
+#+lispworks
+(defun platforms ()
+  (let ((count (platform-count)))
+    (fli:with-dynamic-foreign-objects ((platforms platform :nelems count))
+      (let ((error (|clGetPlatformIDs| count platforms nil)))
+        (values (loop for n :below count collecting (fli:dereference platforms :index n))
+                error)))))
+
+#+nil
+(platform-count)
+
+#|
+
+(fli:define-c-typedef s32 (:signed-integer-type 32))
+(fli:define-c-typedef u32 (:unsigned-integer-type 32))
+(fli:define-c-typedef s64 (:signed-integer-type 64))
+(fli:define-c-typedef u64 (:unsigned-integer-type 64))
 
 (fli:define-c-typedef platform :pointer)
 (fli:define-c-typedef device   :pointer)
@@ -399,34 +428,34 @@
     (INVALID-PLATFORM                . -32)
     (INVALID-DEVICE                  . -33)
     (INVALID-CONTEXT                 . -34)   
-    (INVALID-QUEUE_PROPERTIES        . -35)  
-    (INVALID-COMMAND_QUEUE           . -36)        
-    (INVALID-HOST_PTR                . -37)         
-    (INVALID-MEM_OBJECT              . -38)   
-    (INVALID-IMAGE_FORMAT_DESCRIPTOR . -39)   
-    (INVALID-IMAGE_SIZE              . -40)         
+    (INVALID-QUEUE-PROPERTIES        . -35)  
+    (INVALID-COMMAND-QUEUE           . -36)        
+    (INVALID-HOST-PTR                . -37)         
+    (INVALID-MEM-OBJECT              . -38)   
+    (INVALID-IMAGE-FORMAT-DESCRIPTOR . -39)   
+    (INVALID-IMAGE-SIZE              . -40)         
     (INVALID-SAMPLER                 . -41)         
     (INVALID-BINARY                  . -42)         
-    (INVALID-BUILD_OPTIONS           . -43)         
+    (INVALID-BUILD-OPTIONS           . -43)         
     (INVALID-PROGRAM                 . -44)         
-    (INVALID-PROGRAM_EXECUTABLE      . -45)         
-    (INVALID-KERNEL_NAME             . -46)         
-    (INVALID-KERNEL_DEFINITION       . -47)         
+    (INVALID-PROGRAM-EXECUTABLE      . -45)         
+    (INVALID-KERNEL-NAME             . -46)         
+    (INVALID-KERNEL-DEFINITION       . -47)         
     (INVALID-KERNEL                  . -48)
-    (INVALID-ARG_INDEX               . -49)       
-    (INVALID-ARG_VALUE               . -50)         
-    (INVALID-ARG_SIZE                . -51)         
-    (INVALID-KERNEL_ARGS             . -52)         
-    (INVALID-WORK_DIMENSION          . -53)         
-    (INVALID-WORK_GROUP_SIZE         . -54)         
-    (INVALID-WORK_ITEM_SIZE          . -55)         
-    (INVALID-GLOBAL_OFFSET           . -56)         
-    (INVALID-EVENT_WAIT_LIST         . -57)         
+    (INVALID-ARG-INDEX               . -49)       
+    (INVALID-ARG-VALUE               . -50)         
+    (INVALID-ARG-SIZE                . -51)         
+    (INVALID-KERNEL-ARGS             . -52)         
+    (INVALID-WORK-DIMENSION          . -53)         
+    (INVALID-WORK-GROUP-SIZE         . -54)         
+    (INVALID-WORK-ITEM-SIZE          . -55)         
+    (INVALID-GLOBAL-OFFSET           . -56)         
+    (INVALID-EVENT-WAIT-LIST         . -57)         
     (INVALID-EVENT                   . -58)         
     (INVALID-OPERATION               . -59)         
-    (INVALID-GL_OBJECT               . -60)         
-    (INVALID-BUFFER_SIZE             . -61)         
-    (INVALID-MIP_LEVEL               . -62)))
+    (INVALID-GL-OBJECT               . -60)         
+    (INVALID-BUFFER-SIZE             . -61)         
+    (INVALID-MIP-LEVEL               . -62)))
 
 
 #+nil
@@ -440,3 +469,6 @@
 
 #+nil
 (devices (first (platforms)))
+
+(eval `(locally ,@(loop for l in +c-types+ collect `(fli:define-c-typedef ,(first l) ,(rest l)))))
+|#
