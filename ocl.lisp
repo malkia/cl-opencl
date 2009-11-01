@@ -118,29 +118,38 @@
     #+macosx
     (|clLogMessagesToStderrAPPLE|    VOID    ((STR error-string) (PTR private-info) (SIZE-T cb) (PTR user-data)))))
 
-;;; EVAL UGLYNESS
-#+lispworks
-(locally
-  (fli:register-module "OpenCL"
-                       :real-name #+macosx "/System/Library/Frameworks/OpenCL.framework/OpenCL"
-                       #+win32 "C:/Windows/System32/OpenCL.dll"
-                       #+linux "/usr/lib/libOpenCL.so"
-                       :connection-style :immediate)
-  (eval `(locally ,@(loop for l in +c-types+ collect `(fli:define-c-typedef ,(first l) ,(second l)))))
-  (dolist (l +c-functions+)
-    (eval `(fli:define-foreign-function (,(first l) ,(format nil "~A" (first l)))
-               ,(loop for p in (third l)
-                      collect `(,(second p)
-                                ,(if (atom (first p))
-                                     (first p)
-                                   `(:pointer ,(first (first p))))))
-             :result-type ,(second l)
-             :module "OpenCL"
-             :calling-convention #+win32 :stdcall #-win32 :cdecl))))
+(fli:register-module "OpenCL"
+                     :real-name #+macosx "/System/Library/Frameworks/OpenCL.framework/OpenCL"
+                     #+win32 "C:/Windows/System32/OpenCL.dll"
+                     #+linux "/usr/lib/libOpenCL.so"
+                     :connection-style :immediate)
+(defmacro dumb ()
+   `(locally
+      ,@(loop for l in +c-types+ collect
+              `(fli:define-c-typedef ,(first l) ,(second l)))
+      ,@(loop for l in +c-functions+ collect
+              `(fli:define-foreign-function (,(first l) ,(format nil "~A" (first l)))
+                   ,(loop for p in (third l)
+                          collect `(,(second p)
+                                    ,(if (atom (first p))
+                                         (first p)
+                                       `(:pointer ,(first (first p))))))
+                 :result-type ,(second l)
+                 :module "OpenCL"
+                 :calling-convention #+win32 :stdcall #-win32 :cdecl))
+      (values)))
+
+(dumb)
+
+ (pprint (sort (let (r) (do-symbols (s (find-package "OCL") r)
+                                     (when (eq (symbol-package s) (find-package "OCL"))
+                                       (push s r))
+                                     r))
+                          #'string>))
 
 #+lispworks
 (defun platform-count ()
-  (fli:with-dynamic-foreign-objects ((count u32))
+  (fli:with-dynamic-foreign-objects ((count uint))
     (let ((error (|clGetPlatformIDs| 0 nil count)))
       (values (fli:dereference count) error))))
 
