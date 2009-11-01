@@ -125,6 +125,14 @@
 #+macosx
 (fli:register-module "/System/Library/Frameworks/OpenCL.framework/OpenCL") 
 
+#+win32
+(fli:register-module "C:/Windows/System32/OpenCL.dll")
+
+(fli:define-c-typedef s32 (:signed :int))
+(fli:define-c-typedef u32 (:unsigned :int))
+(fli:define-c-typedef s64 (:signed :long-long))
+(fli:define-c-typedef u64 (:unsigned :long-long))
+
 (fli:define-c-typedef platform :pointer)
 (fli:define-c-typedef device   :pointer)
 (fli:define-c-typedef context  :pointer)
