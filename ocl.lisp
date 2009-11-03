@@ -1,45 +1,51 @@
-;;; Lispworks specific code (written with 5.1.2 version on Mac OS X 10.6)
+#+nil
+(rename-package "OCL" (gensym))
 
 (defpackage "OCL" (:use "CL")
   (:export
-   "PLATFORMS"       "PLATFORM-COUNT"
-   "DEVICES"         "DEVICE-COUNT"
-   "RETAIN"          "RELEASE"
+   "PLATFORMS" "PLATFORM-COUNT"
+   "DEVICES" "DEVICE-COUNT"
+   "OBJECT" "PLATFORM" "DEVICE" "CONTEXT" "QUEUE" "BUFFER" "PROGRAM" "KERNEL" "EVENT" "IMAGE-FORMAT" "SAMPLER"
+   "RETAIN" "RELEASE"
+   "CREATE-CONTEXT"
+   "CREATE-QUEUE"
+   "ENQUEUE-COPY-BUFFER"
    ))
 (in-package "OCL")
 
-(defconstant +c-types+
-  '((STR      :pointer)
-    (INT      (:signed-integer-type 32))
-    (UINT     (:unsigned-integer-type 32))
-    (MASK     (:unsigned-integer-type 64))
-    (BOOL     UINT)
-    (PTR      :pointer)
-    (PARAM    :signed)
-    (SIZE-T   :unsigned)
-    (CALLBACK :pointer)
-    (PLATFORM :pointer)
-    (DEVICE   :pointer)
-    (CONTEXT  :pointer)
-    (QUEUE    :pointer)
-    (BUFFER   :pointer)
-    (PROGRAM  :pointer)
-    (KERNEL   :pointer)
-    (EVENT    :pointer)
+(defparameter +c-types+
+  '((STR          (:reference-pass :ef-mb-string))
+    (INT          (:signed-integer-type 32))
+    (UINT         (:unsigned-integer-type 32))
+    (MASK         (:unsigned-integer-type 64))
+    (BOOL          UINT)
+    (PTR          :pointer)
+    (LISP-ARRAY   :lisp-array)
+    (PARAM        :signed)
+    (SIZE-T       :unsigned)
+    (CALLBACK     :pointer)
+    (PLATFORM     :pointer)
+    (DEVICE       :pointer)
+    (CONTEXT      :pointer)
+    (QUEUE        :pointer)
+    (BUFFER       :pointer)
+    (PROGRAM      :pointer)
+    (KERNEL       :pointer)
+    (EVENT        :pointer)
     (IMAGE-FORMAT :pointer)
-    (VOID     :pointer)
-    (SAMPLER  :pointer)))
+    (VOID         :pointer)
+    (SAMPLER      :pointer)))
 
-(defconstant +c-structures+
+(defparameter +c-structures+
   '((IMAGE-FORMAT)))
 
-(defconstant +c-functions+
+(defparameter +c-functions+
   '((|clGetPlatformIDs|              INT     ((UINT num-entries) ((PLATFORM) platforms) ((UINT) num-platforms)))
     (|clGetPlatformInfo|             INT     ((PLATFORM platform) (PARAM platform-info) (SIZE-T param-value-size) (PTR param-value) ((SIZE-T) param-value-size-returned)))
     (|clGetDeviceIDs|                INT     ((PLATFORM platform) (MASK device-type) (UINT num-entries) ((DEVICE) devices) ((UINT) num-devices)))
     (|clGetDeviceInfo|               INT     ((DEVICE device) (PARAM device-info) (SIZE-T param-value-size) (PTR param-value) ((SIZE-T) param-value-size-returned)))
     (|clCreateContext|               CONTEXT ((PTR context-properties) (UINT num-devices) ((DEVICE) devices) (CALLBACK notify) (PTR user-data) ((INT) error-returned)))
-    (|clCreateContextFromType|       CONTEXT ((PTR context-properties) (MASK device-type) (CALLBACK notify) (PTR user-data0 ((INT) error-returned))))
+    (|clCreateContextFromType|       CONTEXT ((PTR context-properties) (MASK device-type) (CALLBACK notify) (PTR user-data) ((INT) error-returned)))
     (|clRetainContext|               INT     ((CONTEXT context)))
     (|clReleaseContext|              INT     ((CONTEXT context)))
     (|clGetContextInfo|              INT     ((CONTEXT context) (PARAM context-info) (SIZE-T param-value-size) (PTR param-value) ((SIZE-T) param-value-size-returned)))
@@ -48,9 +54,9 @@
     (|clReleaseQueue|                INT     ((QUEUE queue)))
     (|clGetCommandQueueInfo|         INT     ((QUEUE queue) (PARAM command-queue-info) (SIZE-T param-value-size) (PTR param-value) ((SIZE-T) param-value-size-returned)))
     (|clSetCommandQueueProperty|     INT     ((QUEUE queue) (MASK command-queue-properties) (BOOL enabled) ((MASK) command-queue-properties-returned)))
-    (|clCreateBuffer|                BUFFER  ((CONTEXT context) (MASK memory-flags) (SIZE-T memory-size) (PTR host-ptr) ((INT) error-returned)))
-    (|clCreateImage2D|               BUFFER  ((CONTEXT context) (MASK memory-flags) ((IMAGE-FORMAT) format) (SIZE-T width) (SIZE-T height) (SIZE-T row-pitch) (PTR host-ptr) ((INT) error-returned)))
-    (|clCreateImage3D|               BUFFER  ((CONTEXT context) (MASK memory-flags) ((IMAGE-FORMAT) format) (SIZE-T width) (SIZE-T height) (SIZE-T depth) (SIZE-T row-pitch) (SIZE-T slice-pitch) (PTR host-ptr) ((INT) error-returned)))
+    (|clCreateBuffer|                BUFFER  ((CONTEXT context) (MASK memory-flags) (SIZE-T memory-size) (LISP-ARRAY host-array) ((INT) error-returned)))
+    (|clCreateImage2D|               BUFFER  ((CONTEXT context) (MASK memory-flags) ((IMAGE-FORMAT) format) (SIZE-T width) (SIZE-T height) (SIZE-T row-pitch) (LISP-ARRAY host-array) ((INT) error-returned)))
+    (|clCreateImage3D|               BUFFER  ((CONTEXT context) (MASK memory-flags) ((IMAGE-FORMAT) format) (SIZE-T width) (SIZE-T height) (SIZE-T depth) (SIZE-T row-pitch) (SIZE-T slice-pitch) (LISP-ARRAY host-array) ((INT) error-returned)))
     (|clRetainMemObject|             INT     ((BUFFER buffer)))
     (|clReleaseMemObject|            INT     ((BUFFER bufffer)))
     (|clGetSupportedImageFormats|    INT     ((CONTEXT context) (MASK memory-flags) (PARAM image-type) (UINT num-entries) ((IMAGE-FORMAT) image-formats) ((UINT) num-image-formats-returned)))
@@ -81,11 +87,11 @@
     (|clGetEventProfilingInfo|       INT     ((EVENT event) (PARAM profiling-info) (SIZE-T param-value-size) (PTR param-value) ((SIZE-T) param-value-size-returned)))
     (|clFlush|                       INT     ((QUEUE queue)))
     (|clFinish|                      INT     ((QUEUE queue)))
-    (|clEnqueueReadBuffer|           INT     ((QUEUE queue) (BUFFER buffer) (BOOL blocking-read)  (SIZE-T offset) (SIZE-T cb) (PTR ptr) (UINT waiting-event-count) ((EVENT) waiting-events) ((EVENT) event-returned)))
-    (|clEnqueueWriteBuffer|          INT     ((QUEUE queue) (BUFFER buffer) (BOOL blocking-write) (SIZE-T offset) (SIZE-T cb) (PTR ptr) (UINT waiting-event-count) ((EVENT) waiting-events) ((EVENT) event-returned)))
-    (|clEnqueueCopyBuffer|           INT     ((QUEUE queue) (BUFFER src-buffer) (BUFFER dst-buffer) (SIZE-T src-offset) (SIZE-T dst-offset) (SIZE-T cb) (PTR ptr) (UINT waiting-event-count) ((EVENT) waiting-events) ((EVENT) event-returned)))
-    (|clEnqueueReadImage|            INT     ((QUEUE queue) (BUFFER buffer) (BOOL blocking-read)  ((SIZE-T 3) origin) ((SIZE-T 3) region) (SIZE-T row-pitch) (SIZE-T slice-pitch) (PTR ptr) (UINT waiting-event-count) ((EVENT) waiting-events) ((EVENT) event-returned)))
-    (|clEnqueueWriteImage|           INT     ((QUEUE queue) (BUFFER buffer) (BOOL blocking-write) ((SIZE-T 3) origin) ((SIZE-T 3) region) (SIZE-T row-pitch) (SIZE-T slice-pitch) (PTR ptr) (UINT waiting-event-count) ((EVENT) waiting-events) ((EVENT) event-returned)))
+    (|clEnqueueReadBuffer|           INT     ((QUEUE queue) (BUFFER buffer) (BOOL blocking-read)  (SIZE-T offset) (SIZE-T cb) (LISP-ARRAY array) (UINT waiting-event-count) ((EVENT) waiting-events) ((EVENT) event-returned)))
+    (|clEnqueueWriteBuffer|          INT     ((QUEUE queue) (BUFFER buffer) (BOOL blocking-write) (SIZE-T offset) (SIZE-T cb) (LISP-ARRAY array) (UINT waiting-event-count) ((EVENT) waiting-events) ((EVENT) event-returned)))
+    (|clEnqueueCopyBuffer|           INT     ((QUEUE queue) (BUFFER src-buffer) (BUFFER dst-buffer) (SIZE-T src-offset) (SIZE-T dst-offset) (SIZE-T size) (UINT waiting-event-count) ((EVENT) waiting-events) ((EVENT) event-returned)))
+    (|clEnqueueReadImage|            INT     ((QUEUE queue) (BUFFER buffer) (BOOL blocking-read)  ((SIZE-T 3) origin) ((SIZE-T 3) region) (SIZE-T row-pitch) (SIZE-T slice-pitch) (LISP-ARRAY array) (UINT waiting-event-count) ((EVENT) waiting-events) ((EVENT) event-returned)))
+    (|clEnqueueWriteImage|           INT     ((QUEUE queue) (BUFFER buffer) (BOOL blocking-write) ((SIZE-T 3) origin) ((SIZE-T 3) region) (SIZE-T row-pitch) (SIZE-T slice-pitch) (LISP-ARRAY array) (UINT waiting-event-count) ((EVENT) waiting-events) ((EVENT) event-returned)))
     (|clEnqueueCopyImage|            INT     ((QUEUE queue) (BUFFER src-buffer) (BUFFER dst-buffer) ((SIZE-T 3) src-origin) ((SIZE-T 3) region) (SiZE-T dst-offset) (UINT waiting-event-count) ((EVENT) waiting-events) ((EVENT) event-returned)))
     (|clEnqueueCopyImageToBuffer|    INT)
     (|clEnqueueCopyBufferToImage|    INT)
@@ -123,103 +129,134 @@
                      #+win32 "C:/Windows/System32/OpenCL.dll"
                      #+linux "/usr/lib/libOpenCL.so"
                      :connection-style :immediate)
-(defmacro dumb ()
-   `(locally
-      ,@(loop for l in +c-types+ collect
-              `(fli:define-c-typedef ,(first l) ,(second l)))
-      ,@(loop for l in +c-functions+ collect
-              `(fli:define-foreign-function (,(first l) ,(format nil "~A" (first l)))
-                   ,(loop for p in (third l)
-                          collect `(,(second p)
-                                    ,(if (atom (first p))
-                                         (first p)
-                                       `(:pointer ,(first (first p))))))
-                 :result-type ,(second l)
-                 :module "OpenCL"
-                 :calling-convention #+win32 :stdcall #-win32 :cdecl))
-      (values)))
 
-(dumb)
+;;; Create all bindings
+(defmacro doit ()
+  `(progn
+     ,@(loop for l in +c-types+ collect
+             `(fli:define-c-typedef ,(first l) ,(second l)))
+     ,@(loop for l in +c-functions+ collect
+             `(fli:define-foreign-function (,(first l) ,(format nil "~A" (first l)))
+                  ,(loop for p in (third l)
+                         collect `(,(second p)
+                                   ,(if (atom (first p))
+                                        (first p)
+                                      `(:pointer ,(first (first p))))))
+                :result-type ,(second l)
+                :module "OpenCL"
+                :calling-convention #+win32 :stdcall #-win32 :cdecl))))
 
- (pprint (sort (let (r) (do-symbols (s (find-package "OCL") r)
-                                     (when (eq (symbol-package s) (find-package "OCL"))
-                                       (push s r))
-                                     r))
-                          #'string>))
+(doit)
 
-#+lispworks
+#+nil
+(pprint (sort (let (r) (do-symbols (s *package* r)
+                         (when (eq (symbol-package s) *package*)
+                           (push s r))
+                         r))
+              #'string>))
+
+(defun check (return-code &optional (alternative-return-code nil alternative-return-code-supplied-p))
+  "Throws an OpenCL error if the return-code is NEGATIVE, otherwise returns it, or returns an alternative-return-code if supplied. Use this with |clXxx| functions return an error."
+  (if (< 0 return-code)
+      (error "OpenCL error ~A" return-code)
+    (if alternative-return-code-supplied-p
+        alternative-return-code
+      return-code)))
+
+(defun check2 (return-code &optional (error-code nil error-code-supplied-p))
+  "Throws an OpenCL error if the return-code is NEGATIVE, otherwise returns it, or returns an alternative-return-code if supplied. Use this with |clXxx| functions returning an object, and returning the error as reference (usually last parameter of the function call)"
+  (format t "return-code ~A~&error-code ~A~&" return-code error-code)
+  (check (if error-code-supplied-p
+             error-code
+           return-code) return-code))
+  
 (defun platform-count ()
-  (fli:with-dynamic-foreign-objects ((count uint))
-    (let ((error (|clGetPlatformIDs| 0 nil count)))
-      (values (fli:dereference count) error))))
+  "Returns the number of OpenCL platforms."
+  (fli:with-dynamic-foreign-objects ((count UINT))
+    (check (|clGetPlatformIDs| 0 nil count)
+           (fli:dereference count))))
 
-#+lispworks
 (defun platforms ()
+  "Returns a list with available OpenCL platforms."
   (let ((count (platform-count)))
-    (fli:with-dynamic-foreign-objects ((platforms platform :nelems count))
-      (let ((error (|clGetPlatformIDs| count platforms nil)))
-        (values (loop for n :below count collecting (fli:dereference platforms :index n))
-                error)))))
+    (fli:with-dynamic-foreign-objects ((platforms PLATFORM :nelems count))
+      (check (|clGetPlatformIDs| count platforms nil)
+             (loop for n :below count collect (fli:dereference platforms :index n))))))
+
+(defun device-count (platform)
+  "Returns the number of devices for the given platform."
+  (fli:with-dynamic-foreign-objects ((count UINT))
+    (check (|clGetDeviceIDs| platform #xFFFFFFFF 0 nil count)
+           (fli:dereference count))))
+
+(defun devices (platform)
+  "Returns a list with the devices of the given platform."
+  (let ((count (device-count platform)))
+    (fli:with-dynamic-foreign-objects ((devices DEVICE :nelems count))
+      (check (|clGetDeviceIDs| platform #xFFFFFFFFF count devices nil)
+             (loop for n :below count collect (fli:dereference devices :index n))))))
+
+(defun create-context (devices)
+  "Creates an OpenCL context from the list of the devices."
+  (let ((device-count (length devices)))
+    (fli:with-dynamic-foreign-objects
+        ((devices DEVICE :nelems device-count :initial-contents devices)
+         (error INT))
+      (check2 (|clCreateContext| nil device-count devices nil nil error)
+              (fli:dereference error)))))
+
+(defun create-queue (context device &optional (queue-flags 0 queue-flags-supplied-p))
+  "Creates an OpenCL queue in the given context."
+  (fli:with-dynamic-foreign-objects ((error INT))
+    (values (|clCreateCommandQueue| context device queue-flags error)
+            (fli:dereference error))))
+
+(flet ((create-buffer-helper (context size &optional (flags 0) (host-ptr nil))
+         (fli:with-dynamic-foreign-objects ((error INT))
+           (check2 (|clCreateBuffer| context flags size host-ptr error)
+                   (fli:dereference error)))))
+  (defun create-read-buffer (context size &optional (host-ptr nil))
+    (create-buffer-helper context size 2 host-ptr))
+  (defun create-write-buffer (context size &optional (host-ptr nil))
+    (create-buffer-helper context size 1 host-ptr))
+  (defun create-buffer (context size &optional (host-ptr nil))
+    (create-buffer-helper context size 0 host-ptr)))
+
+(defun dalloc (type initial-contents)
+  (let ((length (length initial-contents)))
+    (if (zerop length)
+        nil
+      (fli:allocate-dynamic-foreign-object :type type :initial-contents initial-contents :nelems length))))
+
+(defun enqueue-read-buffer (queue buffer lisp-array size &key (blocking 1) (waiting-events nil) (offset 0))
+  (let ((waiting-count (length waiting-events)))
+    (fli:with-dynamic-foreign-objects ((event EVENT))
+      (check (|clEnqueueReadBuffer| queue buffer blocking offset size lisp-array waiting-count (dalloc EVENT waiting-events) event)
+             (fli:dereference event)))))
+
+(defun enqueue-copy-buffer (queue src-buffer dst-buffer size &key (waiting-events nil) (src-offset 0) (dst-offset 0))
+  (let ((waiting-count (length waiting-events)))
+    (fli:with-dynamic-foreign-objects ((event EVENT))
+      (check (|clEnqueueCopyBuffer| queue src-buffer dst-buffer src-offset dst-offset size waiting-count (dalloc EVENT waiting-events) event)
+             (fli:dereference event)))))
+
+(defvar *platforms* (platforms))
+(defvar *platform* (first *platforms*))
+(defvar *devices* (devices *platform*))
+(defvar *context* (create-context *devices*))
+(defvar *queues* (loop for device in *devices* collect (create-queue *context* device)))
+(defvar *queue* (first *queues*))
+(defvar *buffer-size* (* 1024 1024))
+(defvar *read-buffer* (create-read-buffer *context* *buffer-size*))
+(defvar *write-buffer* (create-write-buffer *context* *buffer-size*))
+(defvar *buffer* (create-buffer *context* *buffer-size*))
+(defvar *lisp-buffer* (make-array (/ *buffer-size* 4) :element-type 'single-float :allocation :static))
 
 #+nil
 (platform-count)
 
-#|
-
-(fli:define-c-typedef s32 (:signed-integer-type 32))
-(fli:define-c-typedef u32 (:unsigned-integer-type 32))
-(fli:define-c-typedef s64 (:signed-integer-type 64))
-(fli:define-c-typedef u64 (:unsigned-integer-type 64))
-
-(fli:define-c-typedef platform :pointer)
-(fli:define-c-typedef device   :pointer)
-(fli:define-c-typedef context  :pointer)
-(fli:define-c-typedef queue    :pointer)
-(fli:define-c-typedef buffer   :pointer)
-(fli:define-c-typedef program  :pointer)
-(fli:define-c-typedef kernel   :pointer)
-(fli:define-c-typedef event    :pointer)
-(fli:define-c-typedef sampler  :pointer)
-
-(fli:define-foreign-function (cl-get-platform-ids "clGetPlatformIDs")
-    ((num-entries       u32)
-     (platforms         (:one-of :pointer (:pointer platform)))
-     (num-platforms     (:one-of :pointer (:pointer u32))))
-  :result-type s32)
-
-(fli:define-foreign-function (cl-get-platform-ids-2 "clGetPlatformIDs")
-    ((num-entries       u32)
-     (platforms         (:one-of :pointer (:pointer platform)))
-     (num-platforms     (:one-of :pointer (:pointer u32))))
-  :result-type s32)
-
-(fli:define-foreign-function (cl-get-device-ids "clGetDeviceIDs")
-    ((platform          :pointer)
-     (device-types-mask u64)
-     (num-entries       u32)
-     (devices           (:one-of :pointer (:pointer device)))
-     (num-devices       (:one-of :pointer (:pointer u32))))
-  :result-type s32)
-
-(fli:define-foreign-function (cl-create-context "clCreateContext")
-    ((context-properties :pointer)
-     (device-count       u32)
-     (devices            (:pointer device))
-     (notify-function    :pointer)
-     (notify-user-data   :pointer)
-     (error-code         (:one-of :pointer (:pointer u32))))
-  :result-type context)
-
-(fli:define-foreign-function (cl-create-buffer "clCreateBuffer")
-    ((context context)
-     (flags   u64)
-     (size    :unsigned)
-     (host    :pointer)
-     (error   (:pointer s32)))
-  :result-type buffer)
-
 (defclass object() ((object :initarg :object)))
-(defclass platform  (object) ())
+(defclass platform  (object) ((devices)))
 (defclass device    (object) ())
 (defclass context   (object) ((devices :initarg :devices)))
 (defclass queue     (object) ((device  :initarg :device)))
@@ -228,95 +265,64 @@
 (defclass program   (object) ((source) (devices)))
 (defclass kernel    (object) ((program) (name)))
 (defclass event     (object) ())
+(defclass parameter () ((name) (id) (type)))
 
-(fli:define-foreign-function (cl-retain-context   "clRetainContext")       ((context context)) :result-type s32)
-(fli:define-foreign-function (cl-retain-queue     "clRetainCommandQueue")  ((queue     queue)) :result-type s32)
-(fli:define-foreign-function (cl-retain-buffer    "clRetainMemObject")     ((buffer   buffer)) :result-type s32)
-(fli:define-foreign-function (cl-retain-sampler   "clRetainSampler")       ((sampler sampler)) :result-type s32)
-(fli:define-foreign-function (cl-retain-program   "clRetainProgram")       ((program program)) :result-type s32)
-(fli:define-foreign-function (cl-retain-kernel    "clRetainKernel")        ((kernel   kernel)) :result-type s32)
-(fli:define-foreign-function (cl-retain-event     "clRetainEvent")         ((event     event)) :result-type s32)
+(defmethod release ((context context)) (|clReleaseContext|   (slot-value context 'object)))
+(defmethod release ((queue     queue)) (|clReleaseQueue|     (slot-value queue   'object)))
+(defmethod release ((buffer   buffer)) (|clReleaseMemObject| (slot-value buffer  'object)))
+(defmethod release ((sampler sampler)) (|clReleaseSampler|   (slot-value sampler 'object)))
+(defmethod release ((program program)) (|clReleaseProgram|   (slot-value program 'object)))
+(defmethod release ((kernel   kernel)) (|clReleaseKernel|    (slot-value kernel  'object)))
+(defmethod release ((event     event)) (|clReleaseEvent|     (slot-value event   'object)))
+(defmethod retain  ((context context)) (|clRetainContext|    (slot-value context 'object)))
+(defmethod retain  ((queue     queue)) (|clRetainQueue|      (slot-value queue   'object)))
+(defmethod retain  ((buffer   buffer)) (|clRetainMemObject|  (slot-value buffer  'object)))
+(defmethod retain  ((sampler sampler)) (|clRetainSampler|    (slot-value sampler 'object)))
+(defmethod retain  ((program program)) (|clRetainProgram|    (slot-value program 'object)))
+(defmethod retain  ((kernel   kernel)) (|clRetainKernel|     (slot-value kernel  'object)))
+(defmethod retain  ((event     event)) (|clRetainEvent|      (slot-value event   'object)))
 
-(fli:define-foreign-function (cl-release-context  "clReleaseContext")      ((context context)) :result-type s32)
-(fli:define-foreign-function (cl-release-queue    "clReleaseCommandQueue") ((queue     queue)) :result-type s32)
-(fli:define-foreign-function (cl-release-buffer   "clReleaseMemObject")    ((buffer   buffer)) :result-type s32)
-(fli:define-foreign-function (cl-release-sampler  "clReleaseSampler")      ((sampler sampler)) :result-type s32)
-(fli:define-foreign-function (cl-release-program  "clReleaseProgram")      ((program program)) :result-type s32)
-(fli:define-foreign-function (cl-release-kernel   "clReleaseKernel")       ((kernel   kernel)) :result-type s32)
-(fli:define-foreign-function (cl-release-event    "clReleaseEvent")        ((event     event)) :result-type s32)
-
-(defmethod release ((context context)) (cl-release-context (slot-value context 'object)))
-(defmethod release ((queue     queue)) (cl-release-queue   (slot-value queue   'object)))
-(defmethod release ((buffer   buffer)) (cl-release-buffer  (slot-value buffer  'object)))
-(defmethod release ((sampler sampler)) (cl-release-sampler (slot-value sampler 'object)))
-(defmethod release ((program program)) (cl-release-program (slot-value program 'object)))
-(defmethod release ((kernel   kernel)) (cl-release-kernel  (slot-value kernel  'object)))
-(defmethod release ((event     event)) (cl-release-event   (slot-value event   'object)))
-
-(defmethod retain  ((context context)) (cl-retain-context  (slot-value context 'object)))
-(defmethod retain  ((queue     queue)) (cl-retain-queue    (slot-value queue   'object)))
-(defmethod retain  ((buffer   buffer)) (cl-retain-buffer   (slot-value buffer  'object)))
-(defmethod retain  ((sampler sampler)) (cl-retain-sampler  (slot-value sampler 'object)))
-(defmethod retain  ((program program)) (cl-retain-program  (slot-value program 'object)))
-(defmethod retain  ((kernel   kernel)) (cl-retain-kernel   (slot-value kernel  'object)))
-(defmethod retain  ((event     event)) (cl-retain-event    (slot-value event   'object)))
-
-(defclass parameter ()
-  ((name)
-   (id)
-   (type)))
-
-(fli:define-foreign-function (cl-get-platform-info "clGetPlatformInfo") ((platform platform) (param u32) (size :unsigned) (data :pointer) (sizeret (:one-of :pointer (:pointer :unsigned)))) :result-type s32)
-(fli:define-foreign-function (cl-get-device-info   "clGetDeviceInfo")   ((device     device) (param u32) (size :unsigned) (data :pointer) (sizeret (:one-of :pointer (:pointer :unsigned)))) :result-type s32)
-(fli:define-foreign-function (cl-get-context-info  "clGetContextInfo")  ((context  context)  (param u32) (size :unsigned) (data :pointer) (sizeret (:one-of :pointer (:pointer :unsigned)))) :result-type s32)
-
-(defconstant +parameters+
-  '((platform profile                       #x0900 string)
-    (platform version                       #x0901 string)
-    (platform name                          #x0902 string)
-    (platform vendor                        #x0903 string)
-    (platform extensions                    #x0904 string)
-    (device   type                          #x1000 u64)
-    (device   vendor-id                     #x1001 u32)
-    (device   max-compute-units             #x1002 u32)
-    (device   max-work-item-dimensions      #x1003 u32)
-    (device   max-work-item-sizes           #x1004 (:pointer :unsigned))
-    (device   max-work-group-size           #x1005 :unsigned)
-    (device   preferred-vector-width-char   #x1006 u32)
-    (device   preferred-vector-width-short  #x1007 u32)
-    (device   preferred-vector-width-int    #x1008 u32)
-    (device   preferred-vector-width-long   #x1009 u32)
-    (device   preferred-vector-width-float  #x100A u32)
-    (device   preferred-vector-width-double #x100B u32)
-    (device   max-clock-frequency           #x100c u32)
-    (device   address-bits                  #x100d u32)
-    (device   max-mem-alloc-size            #x100e u64)
-    (device   image-support                 #x100f u32)
-    (device   max-read-image-args           #x1010 u32)
-    (device   max-write-image-args          #x1011 u32)
-    (device   image2d-max-width             #x1012 :unsigned)
-    (device   image2d-max-height            #x1013 :unsigned)
-    (device   image3d-max-width             #x1014 :unsigned)
-    (device   image3d-max-height            #x1015 :unsigned)
-    (device   image3d-max-depth             #x1016 :unsigned)
-    (device   max-samplers                  #x1017 u32)
-    (device   max-parameter-size            #x1018 :unsigned)
-    (device   mem-base-addr-align           #x1019 u32)
-    (device   min-data-type-align-size      #x101A u32)
-    (device   single-fp-config              #x101B u64)
-    (device   global-mem-cache-type         #x101C u32)
-    (device   global-mem-cacheline-size     #x101D u32)
-    (device   global-mem-cache-size         #x101E u64)
-    (device   global-mem-size               #x101F u64)
+(defparameter +parameters+
+  '((platform profile                       #x0900 STRING)
+    (platform version                       #x0901 STRIGN)
+    (platform name                          #x0902 STRING)
+    (platform vendor                        #x0903 STRING)
+    (platform extensions                    #x0904 STRING)
+    (device   type                          #x1000 MASK)
+    (device   vendor-id                     #x1001 UINT)
+    (device   max-compute-units             #x1002 UINT)
+    (device   max-work-item-dimensions      #x1003 UINT)
+    (device   max-work-item-sizes           #x1004 VOID)
+    (device   max-work-group-size           #x1005 SIZE-T)
+    (device   preferred-vector-width-char   #x1006 UINT)
+    (device   preferred-vector-width-short  #x1007 UINT)
+    (device   preferred-vector-width-int    #x1008 UINT)
+    (device   preferred-vector-width-long   #x1009 UINT)
+    (device   preferred-vector-width-float  #x100A UINT)
+    (device   preferred-vector-width-double #x100B UINT)
+    (device   max-clock-frequency           #x100c UINT)
+    (device   address-bits                  #x100d UINT)
+    (device   max-mem-alloc-size            #x100e ULONG)
+    (device   image-support                 #x100f UINT)
+    (device   max-read-image-args           #x1010 UINT)
+    (device   max-write-image-args          #x1011 UINT)
+    (device   image2d-max-width             #x1012 SIZE-T)
+    (device   image2d-max-height            #x1013 SIZE-T)
+    (device   image3d-max-width             #x1014 SIZE-T)
+    (device   image3d-max-height            #x1015 SIZE-T)
+    (device   image3d-max-depth             #x1016 SIZE-T)
+    (device   max-samplers                  #x1017 UINT)
+    (device   max-parameter-size            #x1018 SIZE-T)
+    (device   mem-base-addr-align           #x1019 UINT)
+    (device   min-data-type-align-size      #x101A UINT)
+    (device   single-fp-config              #x101B ULONG)
+    (device   global-mem-cache-type         #x101C UINT)
+    (device   global-mem-cacheline-size     #x101D UINT)
+    (device   global-mem-cache-size         #x101E ULONG)
+    (device   global-mem-size               #x101F ULONG)
 ))    
 
-(defmethod info-function ((platform platform)) #'cl-get-platform-info)
-(defmethod info-function ((device     device)) #'cl-get-device-info)
-(defmethod info-function ((context   context)) #'cl-get-context-info)
-
-(defgeneric info (param object &optional object2))
-
-(defun cl-get-info (param object1 &optional object2 &key (f1 #'cl-get-device-info) (f2 nil))
+(defun get-info (param object1 &optional object2 &key (f1 #'|clGetDeviceInfo|) (f2 nil))
   (assert (not (eq (null f1) (null f2))))
   (fli:with-dynamic-foreign-objects ((size :unsigned 0))
     (let ((e1 (if (null f2) (funcall f1 object1 param 0 nil size)
@@ -334,6 +340,18 @@
                   (values nil e2)))))
         (values nil e1)))))
 
+
+(defmethod initialize-instance :after ((context context) &rest initargs &key &allow-other-keys)
+  (with-slots (object devices) context
+        (make-context devices)))
+
+#|
+(defmethod info-function ((platform platform)) #'cl-get-platform-info)
+(defmethod info-function ((device     device)) #'cl-get-device-info)
+(defmethod info-function ((context   context)) #'cl-get-context-info)
+
+(defgeneric info (param object &optional object2))
+
 (defmethod info (param (platform platform) &optional object2)
   (let ((platform (slot-value platform 'object)))
     (fli:with-dynamic-foreign-objects ((count :unsigned))
@@ -343,58 +361,6 @@
             (let ((error2 (cl-get-platform-info platform param count param-value nil)))
               (values param-value count error1 error2))))))))
 
-(defun platform-count ()
-  (fli:with-dynamic-foreign-objects ((count u32))
-    (let ((error (cl-get-platform-ids 0 nil count)))
-      (values (fli:dereference count) error))))
-
-(defun platforms ()
-  (let ((count (platform-count)))
-    (fli:with-dynamic-foreign-objects ((platforms platform :nelems count))
-      (let ((error (cl-get-platform-ids count platforms nil)))
-        (values (loop for n :below count collecting (fli:dereference platforms :index n))
-                error)))))
-
-(defun platforms2 ()
-  (let ((count (platform-count)))
-    (fli:with-dynamic-foreign-objects ((platforms platform :nelems count))
-      (let ((error (cl-get-platform-ids count platforms nil)))
-        (values (loop for n :below count collecting (make-instance 'platform :object (fli:dereference platforms :index n)))
-                error)))))
-
-(defun device-count (platform)
-  (fli:with-dynamic-foreign-objects ((count u32))
-    (let ((error (cl-get-device-ids platform #xFFFFFFFF 0 nil count)))
-      (values (fli:dereference count) error))))
-
-(defun devices (platform)
-  (let ((count (device-count platform)))
-    (fli:with-dynamic-foreign-objects ((devices device :nelems count))
-      (let ((error (cl-get-device-ids platform #xFFFFFFFFF count devices nil)))
-        (values (loop for n :below count collecting (fli:dereference devices :index n))
-                error)))))
-
-(defun devices2 (platform)
-  (let ((platform (slot-value platform 'object)))
-   (let ((count (device-count platform)))
-     (fli:with-dynamic-foreign-objects ((devices device :nelems count))
-       (let ((error (cl-get-device-ids platform #xFFFFFFFFF count devices nil)))
-         (values (loop for n :below count collecting
-                       (make-instance 'device :object (fli:dereference devices :index n)))
-                 error))))))
-
-(defun make-context (devices)
-  (let* ((device-count (length devices)))
-    (fli:with-dynamic-foreign-objects
-        ((devices device :nelems device-count :initial-contents devices)
-         (error u32))
-      (let ((context (cl-create-context nil device-count devices nil nil error)))
-        (values context (fli:dereference error))))))
-
-(defmethod initialize-instance :after ((context context) &rest initargs &key &allow-other-keys)
-  (setf (slot-value context 'object)
-        (make-context (slot-value context 'devices))))
-                                       
 (fli:define-foreign-callable ("notify" :result-type :void)
     ((error-info   (:reference-return :ef-mb-string))
      (private-info :pointer)
@@ -481,3 +447,4 @@
 
 (eval `(locally ,@(loop for l in +c-types+ collect `(fli:define-c-typedef ,(first l) ,(rest l)))))
 |#
+
